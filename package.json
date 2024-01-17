@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "graphology": "^0.25.4",
+    "iwanthue": "^2.0.0",
+    "kotatsu": "^0.23.1",
+    "sigma": "^3.0.0-alpha3"
+  }
+}
