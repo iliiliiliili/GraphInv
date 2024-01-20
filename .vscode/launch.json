@@ -7,12 +7,15 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Launch Program",
+            "name": "Create Istanbul Json",
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "program": "${workspaceFolder}/build/main.js",
-            // "program": "${workspaceFolder}/src/main.ts",
+            "program": "${workspaceFolder}/build/prepare-istanbul-dataset.js",
+            "runtimeArgs": [
+                "--max-old-space-size=60000"
+            ],
+            "cwd": "${workspaceFolder}/src",
             "preLaunchTask": "tsc: build - tsconfig.json",
             "outFiles": [
                 "${workspaceFolder}/build/**/*.js"
