@@ -1,0 +1,1 @@
+kotatsu serve -c webpack.config.js --typescript src/client.ts --public / ./src

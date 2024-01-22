@@ -1,5 +1,6 @@
-import Graph from "graphology";
+import * as core from "./core"
 
+// import Graph from "graphology";
 // import * as fss from "fs";
 // import readline from "readline"
 
@@ -16,9 +17,9 @@ export class IstanbulEinDataset {
 
     public constructor(
         root: string,
-        // einFile: string = "Mini_15min.mat",
-        einFile: string = "OneYearNoHead_15min.mat",
-        einType: IstanbulEinDataset.EinFileType = IstanbulEinDataset.EinFileType.ConnectionMat,
+        einFile: string = "Mini_15min.mat",
+        // einFile: string = "OneYearNoHead_15min.mat",
+        einType: IstanbulEinDataset.EinFileType = IstanbulEinDataset.EinFileType.ConnectionMatNode,
         featureFiles?: [string, IstanbulEinDataset.FeatureFileType][],
         globalParamsFile: string = "global_params.json",
     ) {
@@ -43,16 +44,22 @@ export class IstanbulEinDataset {
     public async loadDataset() {
 
         switch (this.einType) {
-            case IstanbulEinDataset.EinFileType.ConnectionMat:
+            case IstanbulEinDataset.EinFileType.ConnectionMatNode:
 
-                await this.loadGlobalParams(this.root + "/" + this.globalParamsFile);
+                await this.loadGlobalParams(this.root + "/" + this.globalParamsFile, IstanbulEinDataset.Background.Node);
                 await this.loadEinMat(this.root + "/" + this.einFile);
                 break;
 
-            case IstanbulEinDataset.EinFileType.ConnectionBins:
+            case IstanbulEinDataset.EinFileType.ConnectionBinsNode:
 
-                await this.loadGlobalParams(this.root + "/" + this.globalParamsFile);
-                await this.loadEinBins(this.root);
+                await this.loadGlobalParams(this.root + "/" + this.globalParamsFile, IstanbulEinDataset.Background.Node);
+                await this.loadEinBins(this.root, IstanbulEinDataset.Background.Node);
+                break;
+
+            case IstanbulEinDataset.EinFileType.ConnectionBinsWeb:
+
+                await this.loadGlobalParams(this.root + "/" + this.globalParamsFile, IstanbulEinDataset.Background.Web);
+                await this.loadEinBins(this.root, IstanbulEinDataset.Background.Web);
                 break;
 
             case IstanbulEinDataset.EinFileType.ConnectionJson:
@@ -64,16 +71,25 @@ export class IstanbulEinDataset {
         }
     }
 
-    private async loadGlobalParams(globalParamsFile: string) {
+    private async loadGlobalParams(globalParamsFile: string, background: IstanbulEinDataset.Background) {
 
-        const fs = await import("fs");
-
-        const rawFile = fs.readFileSync(globalParamsFile, "utf8");
-        this.globalParams = JSON.parse(rawFile);
+        switch (background) {
+            case IstanbulEinDataset.Background.Node:
+                const fs = await import("fs");
+                const rawFile = fs.readFileSync(globalParamsFile, "utf8");
+                this.globalParams = JSON.parse(rawFile);
+                break;
+            case IstanbulEinDataset.Background.Web:
+                this.globalParams = await core.readFileFromServer(globalParamsFile, core.ServerFileType.Json) as {nodes: number, links: number};
+                break;
+        
+            default:
+                throw Error();
+        }
     }
 
     private async loadEinMat(einFile: string) {
-        
+
         const fs = await import("fs");
         const readline = await import("readline");
 
@@ -109,16 +125,16 @@ export class IstanbulEinDataset {
             }
         }
     }
-    
+
     private async loadEinBins(
         einFolder: string,
-        fromName: string = "ein_from.bin",
-        toName: string = "ein_to.bin",
-        valueName: string = "ein_value.bin",
+        background: IstanbulEinDataset.Background,
+        fromName: string = "ein_from_${FILE_ID}.bin",
+        toName: string = "ein_to_${FILE_ID}.bin",
+        valueName: string = "ein_value_${FILE_ID}.bin",
     ) {
 
-        const fs = await import("fs");
-
+        const fs = background == IstanbulEinDataset.Background.Node ? await import("fs") : null;
 
         this.connections = {
             from: null,
@@ -131,27 +147,40 @@ export class IstanbulEinDataset {
         //     [toName, "to", (buffer: Buffer) => new Int32Array(buffer.buffer, buffer.byteOffset, buffer.length / 4)],
         //     [valueName, "value", (buffer: Buffer) => new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.length)],
         // ]
-        const toRead: [string, string, (buffer: Buffer) => Int32Array | Uint8Array][] = [
-            [fromName, "from", (buffer: Buffer) => Int32Array.from(buffer)],
-            [toName, "to", (buffer: Buffer) => Int32Array.from(buffer)],
-            [valueName, "value", (buffer: Buffer) => Uint8Array.from(buffer)],
+        const toRead: [string, string, (buffer: Buffer) => Int32Array | Uint8Array, (buffer: Buffer) => Int32Array | Uint8Array][] = [
+            [fromName, "from", (buffer: Buffer) => Int32Array.from(buffer), (buffer: Buffer) => new Int32Array(buffer)],
+            [toName, "to", (buffer: Buffer) => Int32Array.from(buffer), (buffer: Buffer) => new Int32Array(buffer)],
+            [valueName, "value", (buffer: Buffer) => Uint8Array.from(buffer), (buffer: Buffer) => new Uint8Array(buffer)],
         ]
-        
+
         for (const element of toRead) {
 
-            const [fileName, propertyName, constructor] = element;
+            const [fileName, propertyName, constructorNode, constructorWeb] = element;
 
-            const data = fs.readFileSync(einFolder + "/" + fileName);
-            this.connections[propertyName] = constructor(data);
+            let data: Buffer = undefined;
+            let typedData: Int32Array | Uint8Array = undefined;
+
+            switch (background) {
+                case IstanbulEinDataset.Background.Node:
+                    data = fs.readFileSync(einFolder + "/" + fileName);
+                    typedData = constructorNode(data);
+                    break;
+                case IstanbulEinDataset.Background.Web:
+                    data = await core.readFileFromServer(einFolder + "/" + fileName, core.ServerFileType.Binary) as Buffer;
+                    typedData = constructorWeb(data);
+                    break;
+                default:
+                    throw Error();
+            }
+
+            // console.log({data, typedData});
+            // window.debug = window.debug || data;
+            this.connections[propertyName] = typedData;
 
             console.log(`Loaded ${fileName}`);
         }
 
         console.log("Finished loading");
-
-    }
-
-    private loadFeatureInvestorLineTxt() {
 
     }
 
@@ -180,12 +209,12 @@ export class IstanbulEinDataset {
                 // console.time("drain");
 
                 await new Promise(resolve => {
-                    
+
                     writeStream.once("drain", resolve);
                 });
-                
+
                 // console.timeEnd("drain");
-                
+
             }
         }
 
@@ -194,12 +223,10 @@ export class IstanbulEinDataset {
 
     public async saveAsBins(
         saveFolder: string,
-        fromName: string = "ein_from.bin",
-        toName: string = "ein_to.bin",
-        valueName: string = "ein_value.bin",
+        fromName: string = "ein_from_${FILE_ID}.bin",
+        toName: string = "ein_to_${FILE_ID}.bin",
+        valueName: string = "ein_value_${FILE_ID}.bin",
     ) {
-
-        const fs = await import("fs");
 
         const toWrite: [string, Int32Array | Uint8Array][] = [
             [fromName, this.connections.from],
@@ -210,7 +237,7 @@ export class IstanbulEinDataset {
         for (const element of toWrite) {
 
             const [name, value] = element;
-            fs.writeFileSync(saveFolder + "/" + name, Buffer.from(value));
+            await core.writeLargeArrayBuffferToFile(saveFolder + "/" + name, value, core.WriteType.WriteIntoSeparateFiles);
             console.log(`Saved ${name} to ${saveFolder}`);
         }
 
@@ -224,10 +251,16 @@ export namespace IstanbulEinDataset {
         InvestorLineTxt
     }
 
+    export enum Background {
+        Node,
+        Web
+    }
+
     export enum EinFileType {
-        ConnectionMat,
+        ConnectionMatNode,
         ConnectionJson,
-        ConnectionBins,
+        ConnectionBinsNode,
+        ConnectionBinsWeb,
     }
 
     export class Node {

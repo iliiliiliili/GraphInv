@@ -1,1 +1,0 @@
-kotatsu serve --typescript src/main.ts --public / ./src
