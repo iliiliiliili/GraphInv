@@ -17,8 +17,8 @@ export class IstanbulEinDataset {
 
     public constructor(
         root: string,
-        einFile: string = "Mini_15min.mat",
-        // einFile: string = "OneYearNoHead_15min.mat",
+        // einFile: string = "Mini_15min.mat",
+        einFile: string = "OneYearNoHead_15min.mat",
         einType: IstanbulEinDataset.EinFileType = IstanbulEinDataset.EinFileType.ConnectionMatNode,
         featureFiles?: [string, IstanbulEinDataset.FeatureFileType][],
         globalParamsFile: string = "global_params.json",
@@ -132,14 +132,15 @@ export class IstanbulEinDataset {
         fromName: string = "ein_from_${FILE_ID}.bin",
         toName: string = "ein_to_${FILE_ID}.bin",
         valueName: string = "ein_value_${FILE_ID}.bin",
+        fileCounts: number[] = [2, 2, 1],
     ) {
 
         const fs = background == IstanbulEinDataset.Background.Node ? await import("fs") : null;
 
         this.connections = {
-            from: null,
-            to: null,
-            value: null,
+            from: new Int32Array(this.globalParams.links),
+            to: new Int32Array(this.globalParams.links),
+            value: new Uint8Array(this.globalParams.links),
         };
 
         // const toRead: [string, string, (buffer: Buffer) => Int32Array | Uint8Array][] = [
@@ -147,37 +148,46 @@ export class IstanbulEinDataset {
         //     [toName, "to", (buffer: Buffer) => new Int32Array(buffer.buffer, buffer.byteOffset, buffer.length / 4)],
         //     [valueName, "value", (buffer: Buffer) => new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.length)],
         // ]
-        const toRead: [string, string, (buffer: Buffer) => Int32Array | Uint8Array, (buffer: Buffer) => Int32Array | Uint8Array][] = [
-            [fromName, "from", (buffer: Buffer) => Int32Array.from(buffer), (buffer: Buffer) => new Int32Array(buffer)],
-            [toName, "to", (buffer: Buffer) => Int32Array.from(buffer), (buffer: Buffer) => new Int32Array(buffer)],
-            [valueName, "value", (buffer: Buffer) => Uint8Array.from(buffer), (buffer: Buffer) => new Uint8Array(buffer)],
+        const toRead: [string, "from" | "to" | "value", (buffer: Buffer) => Int32Array | Uint8Array, (buffer: Buffer) => Int32Array | Uint8Array][] = [
+            [fromName, "from", (buffer: Buffer) => new Int32Array(buffer.buffer, buffer.byteOffset, buffer.length / 4), (buffer: Buffer) => new Int32Array(buffer)],
+            [toName, "to", (buffer: Buffer) => new Int32Array(buffer.buffer, buffer.byteOffset, buffer.length / 4), (buffer: Buffer) => new Int32Array(buffer)],
+            [valueName, "value", (buffer: Buffer) => new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.length), (buffer: Buffer) => new Uint8Array(buffer)],
         ]
+
+        let elementId = 0;
 
         for (const element of toRead) {
 
             const [fileName, propertyName, constructorNode, constructorWeb] = element;
 
-            let data: Buffer = undefined;
-            let typedData: Int32Array | Uint8Array = undefined;
+            let offset: number = 0;
 
-            switch (background) {
-                case IstanbulEinDataset.Background.Node:
-                    data = fs.readFileSync(einFolder + "/" + fileName);
-                    typedData = constructorNode(data);
-                    break;
-                case IstanbulEinDataset.Background.Web:
-                    data = await core.readFileFromServer(einFolder + "/" + fileName, core.ServerFileType.Binary) as Buffer;
-                    typedData = constructorWeb(data);
-                    break;
-                default:
-                    throw Error();
+            for (let fileId = 0; fileId < fileCounts[elementId]; fileId ++) {
+
+                let localFileName = fileName.replace("${FILE_ID}", fileId.toString());
+                let data: Buffer = undefined;
+                let typedData: Int32Array | Uint8Array = undefined;
+    
+                switch (background) {
+                    case IstanbulEinDataset.Background.Node:
+                        data = fs.readFileSync(einFolder + "/" + localFileName);
+                        typedData = constructorNode(data);
+                        break;
+                    case IstanbulEinDataset.Background.Web:
+                        data = await core.readFileFromServer(einFolder + "/" + localFileName, core.ServerFileType.Binary) as Buffer;
+                        typedData = constructorWeb(data);
+                        break;
+                    default:
+                        throw Error();
+                }
+
+                this.connections[propertyName].set(typedData, offset);
+                offset += typedData.length;
+
+                console.log(`Loaded ${localFileName}`);
+                elementId ++;
             }
 
-            // console.log({data, typedData});
-            // window.debug = window.debug || data;
-            this.connections[propertyName] = typedData;
-
-            console.log(`Loaded ${fileName}`);
         }
 
         console.log("Finished loading");

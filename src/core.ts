@@ -63,8 +63,8 @@ export async function writeLargeArrayBuffferToFile(
 
     const fs = await import("fs");
     const bufferModule = await import("buffer");
-    const maxBufferSize = bufferModule.constants.MAX_STRING_LENGTH;
-    const writeBufferSize = maxBufferSize;
+    const maxBufferSize = bufferModule.constants.MAX_LENGTH / 2 - 1;
+    const writeBufferElementsCount = Math.floor(maxBufferSize / data.BYTES_PER_ELEMENT);
     let mode = (writeType == WriteType.Append ? "a" : "w")
 
     let offset = 0;
@@ -81,13 +81,13 @@ export async function writeLargeArrayBuffferToFile(
             finalPath = filePath.replace("${FILE_ID}", id + "");
         }
 
-        fs.writeFileSync(finalPath, data.subarray(offset, offset + writeBufferSize), { flag: mode });
+        fs.writeFileSync(finalPath, data.subarray(offset, offset + writeBufferElementsCount), { flag: mode });
         
         if (writeType == WriteType.Write) {
             mode = "a";
         }
 
-        offset += writeBufferSize;
+        offset += writeBufferElementsCount;
         id ++;
     }
 
