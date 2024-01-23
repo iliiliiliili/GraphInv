@@ -17,9 +17,13 @@
             ],
             "cwd": "${workspaceFolder}/src",
             "preLaunchTask": "tsc: build - tsconfig.json",
-            "outFiles": [
-                "${workspaceFolder}/build/**/*.js"
-            ],
+            // "outFiles": [
+            //     "${workspaceFolder}/build/**/*.js"
+            // ],
+            // "resolveSourceMapLocations": [
+            //     "${workspaceFolder}/**",
+            //     "!**/node_modules/**"
+            // ],
             "console": "integratedTerminal",
         }
     ]
