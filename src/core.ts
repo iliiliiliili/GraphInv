@@ -37,8 +37,6 @@ export function readFileFromServer(filePath: string | URL, fileType: ServerFileT
 
             const result = req.response;
 
-            console.log(result);
-
             if (result) {
                 resolve(result);
             } else {

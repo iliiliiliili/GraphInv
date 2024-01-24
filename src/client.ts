@@ -26,8 +26,9 @@ window.istanbulDataset = istanbulDataset;
     await istanbulDataset.loadDataset();
     console.log ("Dataset loaded");
     
-    const subsetGraphNodes = 100;
+    const subsetGraphNodes = 1000;
     
+    console.log("Creating the graph");
     const graph = new Graph();
     window.graph = graph;
 
@@ -38,27 +39,41 @@ window.istanbulDataset = istanbulDataset;
 
     let i = 0;
     while (istanbulDataset.connections.from[i] < subsetGraphNodes) {
-        
-        graph.addEdge(
-            istanbulDataset.connections.from[i],
-            istanbulDataset.connections.to[i],
-            {
-                weight: istanbulDataset.connections.value[i]
-            }
-        )
+
+        if (
+            istanbulDataset.connections.from[i] != istanbulDataset.connections.to[i] &&
+            istanbulDataset.connections.to[i] < subsetGraphNodes
+        ) {
+            console.log("Add edge")
+
+            graph.addEdge(
+                istanbulDataset.connections.from[i],
+                istanbulDataset.connections.to[i],
+                {
+                    weight: istanbulDataset.connections.value[i]
+                }
+            )
+        }
+
+        i ++;
     }
 
+    console.log("Graph created");
     
+    console.log("Assigning circular");
     circular.assign(graph);
+    console.log("Assigning forceAtlas2");
     forceAtlas2.assign(graph, {
-        iterations: 50,
+        iterations: 100,
         settings: {
             barnesHutOptimize: true,
         }
     });
     
+    console.log("Assigning node size");
     graph.forEachNode((node, atts) => {
         atts.size = Math.sqrt(graph.degree(node)) / 2;
+        atts.label = "N" + node;
     });
     
     let highlightEdges: string[] = [];

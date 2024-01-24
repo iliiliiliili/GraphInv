@@ -185,9 +185,9 @@ export class IstanbulEinDataset {
                 offset += typedData.length;
 
                 console.log(`Loaded ${localFileName}`);
-                elementId ++;
             }
 
+            elementId ++;
         }
 
         console.log("Finished loading");
@@ -229,6 +229,44 @@ export class IstanbulEinDataset {
         }
 
         writeStream.write("]\n");
+    }
+
+    public async saveAsPajekNet(savePath: string) {
+
+        const fs = await import("fs");
+
+        const writeStream = fs.createWriteStream(savePath, {
+            flags: "w",
+        });
+
+        writeStream.write(`*Vertices ${this.globalParams.nodes}\n`);
+        writeStream.write("*arcs\n");
+
+        for (let i = 0; i < this.connections.from.length; i++) {
+
+            const written = writeStream.write(`${this.connections.from[i] + 1} ${this.connections.to[i] + 1} ${this.connections.value[i]}\n`);
+
+            if (i % 100000 == 0) {
+                console.log(`Save ${i}::${(100 * i / this.connections.from.length).toFixed(2)}%`);
+                // console.log(this.connections.from.length * this.connections.from.BYTES_PER_ELEMENT / 1024 / 1024);
+            }
+
+            if (!written) {
+
+                // console.log("Will drain");
+                // console.time("drain");
+
+                await new Promise(resolve => {
+
+                    writeStream.once("drain", resolve);
+                });
+
+                // console.timeEnd("drain");
+
+            }
+        }
+
+        writeStream.write("\n");
     }
 
     public async saveAsBins(
