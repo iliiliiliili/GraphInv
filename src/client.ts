@@ -26,23 +26,27 @@ window.istanbulDataset = istanbulDataset;
     await istanbulDataset.loadDataset();
     console.log ("Dataset loaded");
     
-    const subsetGraphNodes = 1000;
+    const subsetGraphNodesStart = 200000;
+    const subsetGraphNodesEnd = 200000 + 10000;
     
     console.log("Creating the graph");
     const graph = new Graph();
     window.graph = graph;
 
-    for (let i = 0; i < subsetGraphNodes; i++) {
+    for (let i = subsetGraphNodesStart; i < subsetGraphNodesEnd; i++) {
 
         graph.addNode(i);
     }
 
     let i = 0;
-    while (istanbulDataset.connections.from[i] < subsetGraphNodes) {
+    while (
+        istanbulDataset.connections.from[i] < subsetGraphNodesEnd
+    ) {
 
         if (
-            istanbulDataset.connections.from[i] != istanbulDataset.connections.to[i] &&
-            istanbulDataset.connections.to[i] < subsetGraphNodes
+            istanbulDataset.connections.to[i] >= subsetGraphNodesStart &&
+            istanbulDataset.connections.to[i] < subsetGraphNodesEnd &&
+            istanbulDataset.connections.from[i] != istanbulDataset.connections.to[i]
         ) {
             console.log("Add edge")
 
@@ -64,7 +68,7 @@ window.istanbulDataset = istanbulDataset;
     circular.assign(graph);
     console.log("Assigning forceAtlas2");
     forceAtlas2.assign(graph, {
-        iterations: 100,
+        iterations: 10,
         settings: {
             barnesHutOptimize: true,
         }
