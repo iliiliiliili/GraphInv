@@ -1,3 +1,4 @@
+import { TypedArray } from "osigma/core/ograph";
 
 export enum ServerFileType {
 
@@ -10,6 +11,127 @@ export enum WriteType {
     Write,
     Append,
     WriteIntoSeparateFiles
+}
+
+
+export const bufferToTypedArrayNode = (buffer: Buffer, array: TypedArray) => {
+
+    if (array instanceof Int8Array) {
+
+        return new Int8Array(
+            buffer.buffer,
+            buffer.byteOffset,
+            buffer.length
+        )
+    }
+    if (array instanceof Uint8Array) {
+
+        return new Uint8Array(
+            buffer.buffer,
+            buffer.byteOffset,
+            buffer.length
+        )
+    }
+    if (array instanceof Uint8ClampedArray) {
+
+        return new Uint8ClampedArray(
+            buffer.buffer,
+            buffer.byteOffset,
+            buffer.length
+        )
+    }
+    if (array instanceof Int16Array) {
+
+        return new Int16Array(
+            buffer.buffer,
+            buffer.byteOffset,
+            buffer.length / 2
+        )
+    }
+    if (array instanceof Uint16Array) {
+
+        return new Uint16Array(
+            buffer.buffer,
+            buffer.byteOffset,
+            buffer.length / 2
+        )
+    }
+    if (array instanceof Int32Array) {
+
+        return new Int32Array(
+            buffer.buffer,
+            buffer.byteOffset,
+            buffer.length / 4
+        )
+    }
+    if (array instanceof Uint32Array) {
+
+        return new Uint32Array(
+            buffer.buffer,
+            buffer.byteOffset,
+            buffer.length / 4
+        )
+    }
+    if (array instanceof Float32Array) {
+
+        return new Float32Array(
+            buffer.buffer,
+            buffer.byteOffset,
+            buffer.length / 4
+        )
+    }
+    if (array instanceof Float64Array) {
+
+        return new Float64Array(
+            buffer.buffer,
+            buffer.byteOffset,
+            buffer.length / 8
+        )
+    }
+
+    throw Error(`Array ${array} is not of a known type for buffer to TypedArray conversion`);
+}
+
+export const bufferToTypedArrayWeb = (buffer: Buffer, array: TypedArray) => {
+
+    if (array instanceof Int8Array) {
+
+        return new Int8Array(buffer)
+    }
+    if (array instanceof Uint8Array) {
+
+        return new Uint8Array(buffer)
+    }
+    if (array instanceof Uint8ClampedArray) {
+
+        return new Uint8ClampedArray(buffer)
+    }
+    if (array instanceof Int16Array) {
+
+        return new Int16Array(buffer)
+    }
+    if (array instanceof Uint16Array) {
+
+        return new Uint16Array(buffer)
+    }
+    if (array instanceof Int32Array) {
+
+        return new Int32Array(buffer)
+    }
+    if (array instanceof Uint32Array) {
+
+        return new Uint32Array(buffer)
+    }
+    if (array instanceof Float32Array) {
+
+        return new Float32Array(buffer)
+    }
+    if (array instanceof Float64Array) {
+
+        return new Float64Array(buffer)
+    }
+
+    throw Error(`Array ${array} is not of a known type for buffer to TypedArray conversion`);
 }
 
 
@@ -52,8 +174,7 @@ export function readFileFromServer(filePath: string | URL, fileType: ServerFileT
 export async function writeLargeArrayBuffferToFile(
     filePath: string,
     data: (
-        Uint8Array | Int8Array | Uint16Array | Int16Array | Uint32Array |
-        Int32Array | BigUint64Array | BigInt64Array | Float32Array | Float64Array |
+        TypedArray |
         Buffer
     ),
     writeType: WriteType

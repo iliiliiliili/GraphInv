@@ -3,8 +3,25 @@ import * as core from "./core";
 
 import { OSigma, OGraph } from "osigma";
 
+const defaultFeatureCreator = <TNodeFeatures>(count: number) =>
+    [
+        new Int32Array(count),
+        new Float32Array(count),
+        new Int32Array(count),
+        new Float32Array(count),
+        new Float32Array(count),
+        new Float32Array(count),
+    ] as TNodeFeatures;
+
 export class IstanbulEinDataset<
-    TNodeFeatures extends TypedArray[] = Int32Array[]
+    TNodeFeatures extends TypedArray[] = [
+        Int32Array,
+        Float32Array,
+        Int32Array,
+        Float32Array,
+        Float32Array,
+        Float32Array
+    ]
 > extends OGraph<
     Int32Array,
     Uint8Array,
@@ -16,7 +33,12 @@ export class IstanbulEinDataset<
     public root: string;
     public einFile: string;
     public einType: IstanbulEinDataset.EinFileType;
-    public featureFiles: [string, IstanbulEinDataset.FeatureFileType][];
+    public featureFiles: [
+        string,
+        IstanbulEinDataset.FeatureFileType,
+        (a: string) => number
+    ][];
+    public featureCreators: (count: number) => TNodeFeatures;
     public globalParamsFile: string;
     public globalParams: { nodes: number; links: number } = null;
 
@@ -26,25 +48,52 @@ export class IstanbulEinDataset<
         einFile: string = "OneYearNoHead_15min.mat",
         einType: IstanbulEinDataset.EinFileType = IstanbulEinDataset.EinFileType
             .ConnectionMatNode,
-        featureFiles?: [string, IstanbulEinDataset.FeatureFileType][],
+        featureFiles?: [
+            string,
+            IstanbulEinDataset.FeatureFileType,
+            (a: string) => number
+        ][],
+        featureCreators: (
+            count: number
+        ) => TNodeFeatures = defaultFeatureCreator,
         globalParamsFile: string = "global_params.json"
     ) {
         featureFiles ??= [
-            ["Degree.txt", IstanbulEinDataset.FeatureFileType.InvestorLineTxtNode],
+            [
+                "feature_degree_${FILE_ID}.bin",
+                IstanbulEinDataset.FeatureFileType.InvestorBinWeb,
+                (a) => Math.floor(parseFloat(a)),
+            ],
+            [
+                "feature_centrality_${FILE_ID}.bin",
+                IstanbulEinDataset.FeatureFileType.InvestorBinWeb,
+                (a) => parseFloat(a),
+            ],
+            [
+                "feature_number_of_trades_${FILE_ID}.bin",
+                IstanbulEinDataset.FeatureFileType.InvestorBinWeb,
+                (a) => Math.floor(parseFloat(a)),
+            ],
+            [
+                "feature_profits_${FILE_ID}.bin",
+                IstanbulEinDataset.FeatureFileType.InvestorBinWeb,
+                (a) => parseFloat(a),
+            ],
+            [
+                "feature_profits_excess_${FILE_ID}.bin",
+                IstanbulEinDataset.FeatureFileType.InvestorBinWeb,
+                (a) => parseFloat(a),
+            ],
+            [
+                "feature_volume_${FILE_ID}.bin",
+                IstanbulEinDataset.FeatureFileType.InvestorBinWeb,
+                (a) => parseFloat(a),
+            ],
         ];
-        // [
-        //     ["Centrality.txt", IstanbulEinDataset.FeatureFileType.InvestorLineTxt],
-        //     ["Degree.txt", IstanbulEinDataset.FeatureFileType.InvestorLineTxt],
-        //     ["NumberTrades.txt", IstanbulEinDataset.FeatureFileType.InvestorLineTxt],
-        //     ["Centrality.txt", IstanbulEinDataset.FeatureFileType.InvestorLineTxt],
-        //     ["Profits.txt", IstanbulEinDataset.FeatureFileType.InvestorLineTxt],
-        //     ["ProfitsExcess.txt", IstanbulEinDataset.FeatureFileType.InvestorLineTxt],
-        //     ["Volume.txt", IstanbulEinDataset.FeatureFileType.InvestorLineTxt],
-        // ]
 
         super(
             {
-                features: [new Int32Array()] as TNodeFeatures,
+                features: featureCreators(0),
                 xCoordinates: new Float32Array(),
                 yCoordinates: new Float32Array(),
                 zIndex: new Uint8Array(),
@@ -63,10 +112,10 @@ export class IstanbulEinDataset<
         this.einType = einType;
         this.featureFiles = featureFiles;
         this.globalParamsFile = globalParamsFile;
+        this.featureCreators = featureCreators;
     }
 
     get nodeCount(): number {
-        
         if (this.nodes.features.length > 0) {
             return super.nodeCount;
         }
@@ -113,54 +162,140 @@ export class IstanbulEinDataset<
             default:
                 throw Error(`Unknown EIN type '${this.einType}'`);
         }
+
+        await this.loadFeatures();
     }
 
     private async loadFeatures() {
+        this.nodes.features = this.featureCreators(this.globalParams.nodes);
+
+        let featureIndex = 0;
 
         for (const featureFile of this.featureFiles) {
-
-            const [name, type] = featureFile;
+            const [name, type, parse] = featureFile;
 
             switch (type) {
                 case IstanbulEinDataset.FeatureFileType.InvestorLineTxtNode:
+                    console.log(`Loading node feature ${name}.`);
+                    await this.loadNodeFeatureTxt(
+                        this.root + "/" + name,
+                        featureIndex,
+                        parse
+                    );
+
                     break;
+                case IstanbulEinDataset.FeatureFileType.InvestorBinNode:
+                    console.log(`Loading node feature bin ${name}.`);
+                    await this.loadNodeFeatureBin(
+                        this.root,
+                        name,
+                        featureIndex,
+                        IstanbulEinDataset.Background.Node
+                    );
+                    break;
+                case IstanbulEinDataset.FeatureFileType.InvestorBinWeb:
+                    console.log(`Loading node feature bin ${name}.`);
+                    await this.loadNodeFeatureBin(
+                        this.root,
+                        name,
+                        featureIndex,
+                        IstanbulEinDataset.Background.Web
+                    );
+
+                    break;
+
+                default:
+                    throw Error(`Unknown FeatureFileType'${type}'`);
             }
 
+            featureIndex++;
         }
     }
 
-    private async loadFeatureTxt(file: string, featureIndex: number, parse: (a: string) => number) {
+    private async loadNodeFeatureTxt(
+        file: string,
+        featureIndex: number,
+        parse: (a: string) => number
+    ) {
+        const fs = await import("fs");
+        const readline = await import("readline");
 
-        // const fs = await import("fs");
-        // const readline = await import("readline");
+        const stream = fs.createReadStream(file);
+        const linestream = readline.createInterface({
+            input: stream,
+            crlfDelay: Infinity,
+        });
 
-        // const stream = fs.createReadStream(file);
-        // const linestream = readline.createInterface({
-        //     input: stream,
-        //     crlfDelay: Infinity,
-        // });
+        let i = 0;
 
-        
-        // for await (const line of lineEinStream) {
-        //     const [fromStr, toStr, valueStr] = line.split(/\s+/);
+        this.nodes.features[featureIndex];
 
-        //     this.connections.from[i] = parseInt(fromStr);
-        //     this.connections.to[i] = parseInt(toStr);
-        //     this.connections.value[i] = parseInt(valueStr);
+        for await (const line of linestream) {
+            const value = parse(line.replace("\n", "").replace("\r", ""));
 
-        //     i += 1;
+            this.nodes.features[featureIndex][i] = value;
 
-        //     if (i % 100000 == 0) {
-        //         console.log(
-        //             `Read ${i}::${((100 * i) / this.globalParams.links).toFixed(
-        //                 2
-        //             )}%`
-        //         );
-        //         // console.log(this.connections.from.length * this.connections.from.BYTES_PER_ELEMENT / 1024 / 1024);
-        //     }
-        // }
+            i++;
 
-        // let i = 0;
+            if (i % 100000 == 0) {
+                console.log(
+                    `Read ${i}::${((100 * i) / this.globalParams.nodes).toFixed(
+                        2
+                    )}%`
+                );
+            }
+        }
+    }
+
+    private async loadNodeFeatureBin(
+        folder: string,
+        fileName: string,
+        featureIndex: number,
+        background: IstanbulEinDataset.Background,
+        fileCount = 1
+    ) {
+        const fs =
+            background == IstanbulEinDataset.Background.Node
+                ? await import("fs")
+                : null;
+
+        let offset: number = 0;
+
+        for (let fileId = 0; fileId < fileCount; fileId++) {
+            let localFileName = fileName.replace(
+                "${FILE_ID}",
+                fileId.toString()
+            );
+            let data: Buffer = undefined;
+            let typedData: TypedArray = undefined;
+
+            switch (background) {
+                case IstanbulEinDataset.Background.Node:
+                    data = fs.readFileSync(folder + "/" + localFileName);
+                    typedData = core.bufferToTypedArrayNode(
+                        data,
+                        this.nodes.features[featureIndex]
+                    );
+                    break;
+                case IstanbulEinDataset.Background.Web:
+                    data = (await core.readFileFromServer(
+                        folder + "/" + localFileName,
+                        core.ServerFileType.Binary
+                    )) as Buffer;
+                    typedData = core.bufferToTypedArrayWeb(
+                        data,
+                        this.nodes.features[featureIndex]
+                    );
+                    break;
+                default:
+                    throw Error();
+            }
+
+            this.nodes.features[featureIndex].set(typedData, offset);
+            offset += typedData.length;
+
+            console.log(`Loaded ${localFileName}`);
+        }
     }
 
     private async loadGlobalParams(
@@ -431,13 +566,25 @@ export class IstanbulEinDataset<
         saveFolder: string,
         fromName: string = "ein_from_${FILE_ID}.bin",
         toName: string = "ein_to_${FILE_ID}.bin",
-        valueName: string = "ein_value_${FILE_ID}.bin"
+        valueName: string = "ein_value_${FILE_ID}.bin",
+        nodeFeatureNames: string[] = [
+            "feature_degree_${FILE_ID}.bin",
+            "feature_centrality_${FILE_ID}.bin",
+            "feature_number_of_trades_${FILE_ID}.bin",
+            "feature_profits_${FILE_ID}.bin",
+            "feature_profits_excess_${FILE_ID}.bin",
+            "feature_volume_${FILE_ID}.bin",
+        ]
     ) {
-        const toWrite: [string, Int32Array | Uint8Array][] = [
+        const toWrite: [string, TypedArray][] = [
             [fromName, this.connections.from],
             [toName, this.connections.to],
             [valueName, this.connections.value],
         ];
+
+        for (let i = 0; i < nodeFeatureNames.length; i++) {
+            toWrite.push([nodeFeatureNames[i], this.nodes.features[i]]);
+        }
 
         for (const element of toWrite) {
             const [name, value] = element;
