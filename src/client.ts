@@ -1,4 +1,4 @@
-import { OSigma, OGraph } from "osigma";
+import { OSigma, OGraph, applyForceAtlas2, applyGfa2, applyCircularLayout } from "osigma";
 import { IstanbulEinDataset } from "./data-readers";
 import { ValueChoices } from "osigma/value-choices";
 
@@ -7,6 +7,7 @@ declare global {
     interface Window {
         istanbulDataset: IstanbulEinDataset,
         visualGraph: any,
+        osigma: any,
         debug: any,
     }
 }
@@ -23,7 +24,8 @@ window.istanbulDataset = istanbulDataset;
     // const subsetGraphNodeCount = 10000;
     // const subsetGraphNodesStart = 200000;
     // const subsetGraphNodesEnd = subsetGraphNodesStart + subsetGraphNodeCount;
-    const subsetGraphNodeCount = istanbulDataset.nodeCount;
+    const subsetGraphNodeCount = 10000; //istanbulDataset.nodeCount;
+    const subsetGraphConnectionsCount = 1000000; //istanbulDataset.nodeCount;
     const subsetGraphNodesStart = 0;
     const subsetGraphNodesEnd = subsetGraphNodesStart + subsetGraphNodeCount;
 
@@ -33,10 +35,10 @@ window.istanbulDataset = istanbulDataset;
     istanbulDataset.nodes.yCoordinates = istanbulDataset.nodes.yCoordinates.subarray(subsetGraphNodesStart, subsetGraphNodesEnd);
     istanbulDataset.nodes.zIndex = istanbulDataset.nodes.zIndex.subarray(subsetGraphNodesStart, subsetGraphNodesEnd);
     
-    // istanbulDataset.nodes.features.forEach((a, i) => {
+    istanbulDataset.nodes.features.forEach((a, i) => {
 
-    //     istanbulDataset.nodes.features[i] = a.subarray(subsetGraphNodesStart, subsetGraphNodesEnd);
-    // });
+        istanbulDataset.nodes.features[i] = a.subarray(subsetGraphNodesStart, subsetGraphNodesEnd);
+    });
 
     let i = 0;
     let subsetGraphConnectionsStart = istanbulDataset.connectionCount;
@@ -57,7 +59,7 @@ window.istanbulDataset = istanbulDataset;
         i ++;
     }
 
-    subsetGraphConnectionsEnd = Math.min(subsetGraphConnectionsEnd, subsetGraphConnectionsStart + 10000000);
+    subsetGraphConnectionsEnd = Math.min(subsetGraphConnectionsEnd, subsetGraphConnectionsStart + subsetGraphConnectionsCount);
 
     istanbulDataset.connections.to = istanbulDataset.connections.to.subarray(subsetGraphConnectionsStart, subsetGraphConnectionsEnd);
     istanbulDataset.connections.from = istanbulDataset.connections.from.subarray(subsetGraphConnectionsStart, subsetGraphConnectionsEnd);
@@ -73,13 +75,47 @@ window.istanbulDataset = istanbulDataset;
     const visualGraph = OSigma.makeVisualGraph(istanbulDataset);
     window.visualGraph = visualGraph;
 
-    console.log("Assigning random layout");
-    visualGraph.applyRandomLayout(0, 10000);
+    // console.log("Assigning random layout");
+    // visualGraph.applyRandomLayout(0, 100);
+    console.log("Assigning circular layout");
+    applyCircularLayout(visualGraph);
     
-    // console.log("Assigning forceAtlas2 layout");
-    // visualGraph.applyForceAtlas2Layout();
+
+    const labels = [];
+    // for (let i )
 
     const osigma = new OSigma(visualGraph, container, {}, true, new ValueChoices());
+    window.osigma = osigma;
+
+    console.log("Assigning visual features");
+
+    visualGraph.connections.features[osigma.connectionColorFeatureId].fill(129);
+    
+
+    for (let i = 0; i < visualGraph.nodeCount; i++) {
+
+        // visualGraph.nodes.features[osigma.nodeSizeFeatureId][i] = Math.sqrt(visualGraph.nodes.features[0][i]) / 60;
+        visualGraph.nodes.features[osigma.nodeSizeFeatureId][i] = Math.sqrt(visualGraph.nodes.features[1][i]);
+        visualGraph.nodes.features[osigma.nodeColorFeatureId][i] = Math.floor(Math.random() * 6 * 6 * 6);
+        visualGraph.nodes.features[osigma.nodeLabelFeatureId][i] = (i < 255 ? i : 0);
+    }
+
+    osigma.refresh();
+    
+    console.log("Assigning forceAtlas2 layout");
+    
+    // applyForceAtlas2(visualGraph, {
+    //     steps: 3,
+    //     nodeMassCreator: (c) => new Int32Array(c),
+    //     coordinatesCreator: (c) => new Float32Array(c),
+    //     scalingRatio: 0.001,
+    //     debug: true,
+    //     edgeWeightInfluence: 1/5,
+    // });
+
+    applyGfa2(visualGraph);
+
+    osigma.refresh();
 
     // console.log("Preparing visual graph");
 
@@ -96,4 +132,6 @@ window.istanbulDataset = istanbulDataset;
     //     atts.size = Math.sqrt(graph.degree(node)) / 2;
     //     atts.label = "N" + node;
     // });
+
+    console.log("Prepared");
 })();
