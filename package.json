@@ -10,7 +10,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "git+https://github.com/iliiliiliili/osigma": "^0.1.0",
+    "osigma": "iliiliiliili/osigma",
     "graphology": "^0.25.4",
     "graphology-layout": "^0.6.1",
     "graphology-layout-force": "^0.2.4",
