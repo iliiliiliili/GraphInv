@@ -1,4 +1,9 @@
 {
+  "name": "graph-inv",
+  "version": "0.1.0",
+  "description": "Osigma-based visualization of investor graph networks (1 billion connections, 1 million nodes)",
+  "homepage": "",
+  "bugs": "",
   "scripts": {
     "test": "npm run unit:test",
     "unit:test": "mocha --require ts-node/register ./tests/unit/**/*.ts"
