@@ -5,13 +5,14 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Mocha Tests",
             "args": [
                 "--require",
                 "ts-node/register",
+                // "--allow-uncaught",
                 "${workspaceFolder}/tests/unit/**/*.ts"
             ],
             "internalConsoleOptions": "openOnSessionStart",
-            "name": "Mocha Tests",
             "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
             "request": "launch",
             "skipFiles": [
@@ -20,9 +21,9 @@
             "type": "node"
         },
         {
+            "name": "Prepare Istanbul Dataset",
             "type": "node",
             "request": "launch",
-            "name": "Prepare Istanbul Dataset",
             "skipFiles": [
                 "<node_internals>/**"
             ],

@@ -9,7 +9,7 @@ type TypedArray =
     | Float32Array
     | Float64Array;
 
-type IntTypedArray =
+export type IntTypedArray =
     | Int8Array
     | Uint8Array
     | Uint8ClampedArray
@@ -22,10 +22,10 @@ type NestedKeyPositionMap = { [key: number]: number | NestedKeyPositionMap };
 
 /**
  * DecayingHeap<T> uses a set of integer numbers as key and a number as a value.
- * It optimizes memory usage for tasks that can only decrease in size after the innitial memory allocation.
+ * It optimizes memory usage for tasks that mostly decrease in size after the innitial memory allocation.
  * Supports node removal by index.
  */
-export default class DecayingMaxHeap<
+export class DecayingMaxHeap<
     TKey extends IntTypedArray[],
     TValue extends TypedArray
 > {
@@ -36,19 +36,22 @@ export default class DecayingMaxHeap<
     currentSize: number;
     supportNodeRemovalByKey: boolean;
     nodeKeyPositionMap: NestedKeyPositionMap = {};
+    createKeys: (count: number) => TKey;
+    createValues: (count: number) => TValue;
+    minMaxSize = 0;
 
-    /**
-     *
-     */
     constructor(
         maxSize: number,
-        createIds: (count: number) => TKey,
+        createKeys: (count: number) => TKey,
         createValues: (count: number) => TValue,
         optimizeMemoryAfterSizeDecreasedBy = 0.5,
         supportNodeRemovalByKey = true
     ) {
-        this.heapKeys = createIds(maxSize);
-        this.heapValues = createValues(maxSize);
+        this.createKeys = createKeys;
+        this.createValues = createValues;
+
+        this.heapKeys = this.createKeys(maxSize);
+        this.heapValues = this.createValues(maxSize);
         this.maxSize = maxSize;
         this.currentSize = 0;
         this.optimizeMemoryAfterSizeDecreasedBy =
@@ -79,7 +82,7 @@ export default class DecayingMaxHeap<
     }
 
     public topKey() {
-        return this.keyAt(0);
+        return this.currentSize > 0 ? this.keyAt(0) : undefined;
     }
 
     private keyAt(position: number) {
@@ -96,7 +99,7 @@ export default class DecayingMaxHeap<
         return [this.topKey(), this.topValue()] as const;
     }
 
-    public pop() {
+    public pop(optimizeMemory = true) {
         const latestId = this.currentSize - 1;
         const key = this.topKey();
         const value = this.topValue();
@@ -118,12 +121,14 @@ export default class DecayingMaxHeap<
             );
         }
 
-        this.optimizeMemoryIfNeeded();
+        if (optimizeMemory) {
+            this.optimizeMemoryIfNeeded();
+        }
 
         return [key, value] as const;
     }
 
-    public remove(key: number | number[]) {
+    public remove(key: number | number[], optimizeMemory = true) {
         if (!this.supportNodeRemovalByKey) {
             throw Error("supportNodeRemovalByKey is not set to true");
         }
@@ -158,9 +163,56 @@ export default class DecayingMaxHeap<
             );
         }
 
-        this.optimizeMemoryIfNeeded();
+        if (optimizeMemory) {
+            this.optimizeMemoryIfNeeded();
+        }
 
         return [outputKey, value] as const;
+    }
+
+    public updateValue(key: number | number[], newValue: number) {
+        if (!this.supportNodeRemovalByKey) {
+            throw Error("supportNodeRemovalByKey is not set to true");
+        }
+
+        if (this.heapKeys.length == 1) {
+            if (typeof key == "number") {
+                key = [key];
+            }
+        }
+
+        if (typeof key == "number") {
+            throw Error("Expect a set of numbers as keys");
+        }
+
+        const position = this.getNodePositionInMap(key);
+        const oldValue = this.heapValues[position];
+        this.heapValues[position] = newValue;
+
+        if (newValue > oldValue) {
+            this.siftdown(0, position, newValue, key);
+        } else {
+            this.siftup(position, this.currentSize - 1, newValue, key);
+        }
+    }
+
+    public expand(sizeToAdd: number, roundUpMultiplier = 1.5) {
+        const newSize = Math.floor(
+            Math.max(this.maxSize + sizeToAdd, this.maxSize * roundUpMultiplier)
+        );
+
+        const heapValues = this.createValues(newSize);
+        const heapKeys = this.createKeys(newSize);
+
+        heapValues.set(this.heapValues);
+        this.heapValues = heapValues;
+
+        for (let i = 0; i < this.heapKeys.length; i++) {
+            heapKeys[i].set(this.heapKeys[i]);
+            this.heapKeys[i] = heapKeys[i];
+        }
+
+        this.maxSize = newSize;
     }
 
     private assign(target: number, source: number) {
@@ -246,6 +298,7 @@ export default class DecayingMaxHeap<
 
     private optimizeMemoryIfNeeded() {
         if (
+            this.minMaxSize <= this.currentSize &&
             this.optimizeMemoryAfterSizeDecreasedBy > 0 &&
             this.currentSize <=
                 this.maxSize * this.optimizeMemoryAfterSizeDecreasedBy

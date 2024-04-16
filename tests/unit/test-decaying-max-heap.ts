@@ -1,6 +1,6 @@
 import assert from "assert";
 
-import DecayingMaxHeap from "../../src/clustering/decaying-max-heap";
+import { DecayingMaxHeap } from "../../src/clustering/decaying-max-heap";
 
 describe("DecayingMaxHeap tests", () => {
     it("should create heap and extract all elements in the max-sorted manner", () => {
@@ -41,13 +41,12 @@ describe("DecayingMaxHeap tests", () => {
         assert.deepEqual(result, target);
     });
     it("should create heap and extract all elements in the max-sorted manner for multiple keys", () => {
-        const heap = new DecayingMaxHeap<[Uint8Array, Uint8Array, Int32Array], Float32Array>(
+        const heap = new DecayingMaxHeap<
+            [Uint8Array, Uint8Array, Int32Array],
+            Float32Array
+        >(
             10,
-            (c) => [
-                new Uint8Array(c),
-                new Uint8Array(c),
-                new Int32Array(c),
-            ],
+            (c) => [new Uint8Array(c), new Uint8Array(c), new Int32Array(c)],
             (c) => new Float32Array(c),
             0
         );
@@ -148,7 +147,9 @@ describe("DecayingMaxHeap tests", () => {
             optimizeMemoryAfterSizeDecreasedBy
         );
 
-        const values = new Array(maxSize).fill(undefined).map((_, i) => [i + 100, i]);
+        const values = new Array(maxSize)
+            .fill(undefined)
+            .map((_, i) => [i + 100, i]);
 
         values.forEach(([k, v]) => {
             heap.push(k, v);
@@ -191,7 +192,6 @@ describe("DecayingMaxHeap tests", () => {
 
                 lastSize = heap.currentSize;
             } else {
-
                 assert.equal(
                     heap.heapValues.length,
                     lastSize,
@@ -224,7 +224,6 @@ describe("DecayingMaxHeap tests", () => {
         ];
 
         assert.throws(() => {
-
             values.forEach(([k, v]) => {
                 heap.push(k, v);
             });
@@ -255,15 +254,14 @@ describe("DecayingMaxHeap tests", () => {
             [12, 13, 10, 11, 14],
         ];
 
-
-        orders.forEach(order => {
+        orders.forEach((order) => {
             values.forEach(([k, v]) => {
                 heap.push(k, v);
             });
-    
+
             const result: [number, number][] = [];
 
-            const target = order.map(a => [a, a - 10]);
+            const target = order.map((a) => [a, a - 10]);
 
             order.forEach((key) => {
                 const [k, v] = heap.remove(key);
@@ -271,7 +269,7 @@ describe("DecayingMaxHeap tests", () => {
             });
 
             assert.deepEqual(result, target);
-        })
+        });
     });
     it("should throw on removing non-existing elements", () => {
         const heap = new DecayingMaxHeap<[Uint8Array], Float32Array>(
@@ -298,12 +296,11 @@ describe("DecayingMaxHeap tests", () => {
             [12, 13, 10, 11, -14],
         ];
 
-
-        orders.forEach(order => {
+        orders.forEach((order) => {
             values.forEach(([k, v]) => {
                 heap.push(k, v);
             });
-    
+
             assert.throws(() => {
                 order.forEach((key) => {
                     heap.remove(key);
@@ -313,6 +310,46 @@ describe("DecayingMaxHeap tests", () => {
             while (heap.currentSize > 0) {
                 heap.pop();
             }
-        })
+        });
+    });
+    it("should update element values", () => {
+        const heap = new DecayingMaxHeap<[Uint8Array], Float32Array>(
+            10,
+            (c) => [new Uint8Array(c)],
+            (c) => new Float32Array(c),
+            0
+        );
+
+        const values = [
+            [14, 4],
+            [11, 1],
+            [13, 3],
+            [10, 0],
+            [12, 2],
+        ];
+
+        const target = [
+            [11, 4],
+            [13, 3],
+            [12, 2],
+            [14, 1],
+            [10, 0],
+        ];
+
+        values.forEach(([k, v]) => {
+            heap.push(k, v);
+        });
+
+        heap.updateValue(14, 1);
+        heap.updateValue(11, 4);
+
+        const result: [number, number][] = [];
+
+        while (heap.currentSize > 0) {
+            const [k, v] = heap.pop();
+            result.push([k as number, v]);
+        }
+
+        assert.deepEqual(result, target);
     });
 });
