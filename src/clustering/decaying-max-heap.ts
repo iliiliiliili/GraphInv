@@ -39,6 +39,7 @@ export class DecayingMaxHeap<
     createKeys: (count: number) => TKey;
     createValues: (count: number) => TValue;
     minMaxSize = 0;
+    expandOnPush = 2;
 
     constructor(
         maxSize: number,
@@ -59,7 +60,7 @@ export class DecayingMaxHeap<
         this.supportNodeRemovalByKey = supportNodeRemovalByKey;
     }
 
-    public push(key: number | number[], value: number) {
+    public push(key: number | number[], value: number, expandIfNeeded = false) {
         if (this.heapKeys.length == 1) {
             if (typeof key == "number") {
                 key = [key];
@@ -71,7 +72,15 @@ export class DecayingMaxHeap<
         }
 
         if (this.currentSize + 1 > this.maxSize) {
-            throw Error("Exceeded max size");
+
+            if (expandIfNeeded) {
+
+                this.expand(this.expandOnPush);
+            } else {
+
+                throw Error("Exceeded max size");
+            }
+
         }
 
         this.assignValue(this.currentSize, value, key);

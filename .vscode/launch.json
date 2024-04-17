@@ -5,6 +5,22 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Prepare Istanbul Dataset: TS-Node",
+            "type": "node",
+            "request": "launch",
+            "args": [
+                "${workspaceFolder}/src/prepare-istanbul-dataset.ts"
+            ],
+            "runtimeArgs": [
+                "-r",
+                "ts-node/register",
+                "--max-old-space-size=56000"
+            ],
+            "cwd": "${workspaceFolder}/src",
+            "protocol": "inspector",
+            "internalConsoleOptions": "openOnSessionStart"
+        },
+        {
             "name": "Mocha Tests",
             "args": [
                 "--require",
@@ -27,7 +43,7 @@
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "program": "${workspaceFolder}/build/prepare-istanbul-dataset.js",
+            "program": "${workspaceFolder}/build/src/prepare-istanbul-dataset.js",
             "runtimeArgs": [
                 "--max-old-space-size=60000"
             ],

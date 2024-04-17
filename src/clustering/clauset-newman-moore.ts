@@ -42,9 +42,16 @@ export default function greedy_modularity_communities<
         let m = 0;
 
         for (let i = 0; i < graph.connectionCount; i++) {
+            const from = graph.connections.from[i];
+            const to = graph.connections.to[i];
+
+            if (from === to) {
+                continue;
+            }
+
             const weight = graph.connections.value[i];
-            result[graph.connections.from[i]] += weight;
-            result[graph.connections.to[i]] += weight;
+            result[from] += weight;
+            result[to] += weight;
 
             m += weight;
         }
@@ -71,6 +78,10 @@ export default function greedy_modularity_communities<
             const weight = graph.connections.value[i];
             const from = graph.connections.from[i];
             const to = graph.connections.to[i];
+            
+            if (from === to) {
+                continue;
+            }
 
             if (!(from in result)) {
                 result[from] = {};
@@ -246,7 +257,7 @@ export default function greedy_modularity_communities<
                             if (vNeighbours.has(w)) {
                                 deltaQHeaps[r].updateValue(c, dq_vw);
                             } else {
-                                deltaQHeaps[r].push(c, dq_vw);
+                                deltaQHeaps[r].push(c, dq_vw, true);
                             }
 
                             if (dOldMax == null) {
