@@ -1,15 +1,7 @@
-import {
-    Heap,
-    MinHeap,
-    MaxHeap,
-    IGetCompareValue,
-} from "@datastructures-js/heap";
 import { OGraph } from "osigma";
 import { TypedArray } from "osigma/core/ograph";
 import { DecayingMaxHeap, IntTypedArray } from "./decaying-max-heap";
 
-type HeapElement = [number, number];
-type TotalHeapElement = [number, number, number];
 type DeltaQ = { [key: number]: { [key: number]: number } };
 
 export default function greedy_modularity_communities<
@@ -30,11 +22,19 @@ export default function greedy_modularity_communities<
         TConnectionFeatures
     >,
     createId: (count: number) => TId,
-    createQ: (count: number) => TQ = (c) => new Float32Array(c) as TQ,
-    // idCreator: (count: number) => TId,
-    resolution = 1,
-    cutoff = 1
+    options: {
+        createQ?: (count: number) => TQ,
+        resolution?: number,
+        cutoff?: number,
+        verbose?: boolean,
+    } = {}
 ) {
+
+    const createQ = options.createQ ?? ((c) => new Float32Array(c) as TQ);
+    const resolution = options.resolution ?? 1;
+    const cutoff = options.cutoff ?? 1;
+    const verbose = options.verbose ?? false;
+
     let communities: number[][];
 
     const createNormalizedWeightedDegrees = (): [Float32Array, number] => {
@@ -316,15 +316,16 @@ export default function greedy_modularity_communities<
     while (communities.length > cutoff) {
         const dq = step();
 
-        // console.log({dq, communities});
+        if (verbose) {
+
+            console.log({dq, communities: communities.filter((a) => a !== undefined)});
+        }
         if (dq < 0) {
             break;
         }
     }
 
     const result = communities.filter((a) => a !== undefined);
-
-    // console.log({result});
 
     return result;
 }
