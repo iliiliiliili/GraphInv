@@ -1,6 +1,7 @@
 import { IstanbulEinDataset } from "./data-readers";
 import greedy_modularity_communities from "./clustering/clauset-newman-moore";
 import * as fs from "fs";
+import fire from "js-fire"
 
 const prepareBins = async () => {
     const istanbulDataset = new IstanbulEinDataset("./data/istanbul");
@@ -244,4 +245,10 @@ const createCommunities = async () => {
     fs.writeFileSync("./communities.txt", JSON.stringify(communities));
 };
 
-createCommunities();
+fire({
+    prepareBins,
+    preparePajek,
+    prepareFeatures,
+    checkFeaturesBin,
+    createCommunities,
+});

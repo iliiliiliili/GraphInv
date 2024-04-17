@@ -10,13 +10,14 @@
   },
   "license": "MIT",
   "dependencies": {
-    "osigma": "iliiliiliili/osigma",
     "graphology": "^0.25.4",
     "graphology-layout": "^0.6.1",
     "graphology-layout-force": "^0.2.4",
     "graphology-layout-forceatlas2": "^0.10.1",
     "iwanthue": "^2.0.0",
+    "js-fire": "^1.0.0",
     "kotatsu": "^0.23.1",
+    "osigma": "iliiliiliili/osigma",
     "sigma": "^3.0.0-alpha3",
     "unique-names-generator": "^4.7.1"
   },
