@@ -1,0 +1,1 @@
+sudo sysctl vm.max_map_count=655300
