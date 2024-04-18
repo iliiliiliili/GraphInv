@@ -240,7 +240,7 @@ describe("Clauset-Newman-Moore greedy_modularity_communities tests", () => {
 
         assert.equal(communities.length, 1);
     });
-    it("should combine all nodes of two full sub-graphs", () => {
+    it("should combine all nodes of two full sub-graphs in parallel", () => {
 
         const nodeCountA = 26;
         const nodeCountB = 5;
@@ -353,7 +353,7 @@ describe("Clauset-Newman-Moore greedy_modularity_communities tests", () => {
 
         assert.equal(communities.length, 2);
     });
-    it("should split out a new community with a single node when two full sub-graphs have a single high-value connection bewteen them", () => {
+    it("should split out a new community with a single connection when two full sub-graphs have a single high-value connection bewteen them", () => {
 
         const nodeCountA = 26;
         const nodeCountB = 5;
