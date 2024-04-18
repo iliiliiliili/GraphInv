@@ -123,7 +123,7 @@ const checkFeaturesBin = async () => {
 
 const createCommunities = async () => {
     const istanbulDataset = new IstanbulEinDataset(
-        "./data/istanbul/debug",
+        "./data/istanbul",
         "",
         IstanbulEinDataset.EinFileType.ConnectionBinsNode,
         [
