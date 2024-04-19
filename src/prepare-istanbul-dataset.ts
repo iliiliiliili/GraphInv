@@ -237,8 +237,8 @@ const createCommunities = async (nodeCount=0, dataPath="./data/istanbul") => {
                 subsetGraphConnectionsEnd
             );
     }
-    
-    console.log("Creating communities");
+
+    console.log(`Creating communities for a graph of ${istanbulDataset.nodeCount} nodes and ${istanbulDataset.connectionCount} connection.`);
 
     const communities = greedy_modularity_communities(istanbulDataset, (c) => new Int32Array(c), {verbose: true});
 
